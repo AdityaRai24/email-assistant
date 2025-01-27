@@ -7,12 +7,20 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import axios from "axios";
+import { Loader2Icon, Mail } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -23,8 +31,16 @@ const Form = () => {
     keyPoints: "",
   };
 
+  const emailDetails = {
+    subject: "",
+    body: "",
+  };
+
   const [formData, setFormData] = useState(formDetails);
   const [currentSuggestions, setCurrentSuggestions] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [emailData, setEmailData] = useState(emailDetails);
+  const [showEmail, setShowEmail] = useState(false);
 
   const handlePurposeChange = (e) => {
     setFormData({ ...formData, emailPurpose: e });
@@ -35,7 +51,7 @@ const Form = () => {
   };
 
   const handleChange = (e) => {
-    if (e.target.name === "keyPoints" && e.target.value.length > 300) {
+    if (e.target.name === "keyPoints" && e.target.value.length > 500) {
       toast.error("Length exceeded");
       return;
     } else {
@@ -46,14 +62,40 @@ const Form = () => {
     }
   };
 
-  const generateEmail = async()=>{
-    try {
-        const response = await axios.post(`http://localhost:3000/api/generateEmail`,formData)
-        console.log(response.data)
-    } catch (error) {
-        console.log(error)
+  const generateEmail = async () => {
+    if (!formData.recipientName) {
+      toast.error("Please enter recipient name");
+      return;
     }
-  }
+
+    if (!formData.emailPurpose) {
+      toast.error("Please select email purpose");
+      return;
+    }
+
+    if (!formData.keyPoints) {
+      toast.error("Please enter key points");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        `http://localhost:3000/api/generateEmail`,
+        formData
+      );
+      setEmailData({
+        subject: response.data.subject,
+        body: response.data.body,
+      });
+      setShowEmail(true);
+    } catch (error) {
+      console.log(error);
+      toast.error("Failed to generate email");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const emailPurposeOptions = [
     {
@@ -84,11 +126,11 @@ const Form = () => {
   return (
     <div className="flex flex-col gap-8 items-center justify-center w-full h-screen">
       <div className="w-[38%]">
-        <h1 className="text-4xl font-semibold tracking-tighter">
-          We'd love to help
+        <h1 className="text-4xl font-semibold tracking-tight">
+          Craft the Perfect Email
         </h1>
         <h1 className="text-gray-600">
-          Reach out and we'll get in touch within 24 hours.
+          Provide the details, and create a professional email in no time!
         </h1>
       </div>
 
@@ -129,7 +171,7 @@ const Form = () => {
           </Select>
         </div>
         <div>
-          <Label>Key Points ({formData.keyPoints.length} / 300) </Label>
+          <Label>Key Points ({formData.keyPoints.length} / 500) </Label>
           <Textarea
             name="keyPoints"
             onChange={(e) => handleChange(e)}
@@ -141,8 +183,58 @@ const Form = () => {
             {currentSuggestions}
           </p>
         </div>
-        <Button onClick={()=>generateEmail()} className="w-full h-10 rounded-lg">Generate Email</Button>
+        <Button
+          disabled={loading}
+          onClick={() => generateEmail()}
+          className="w-full h-10 rounded-lg"
+        >
+          {loading ? (
+            <p className="flex items-center justify-center gap-2">
+              Generating Email... <Loader2Icon className="animate-spin" />{" "}
+            </p>
+          ) : (
+            "Generate Email"
+          )}
+        </Button>
       </div>
+
+      <Dialog open={showEmail} onOpenChange={setShowEmail}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5" />
+              Generated Email
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[70vh]">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-medium">
+                  Subject: {emailData.subject}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="whitespace-pre-wrap text-gray-700">
+                  {emailData.body}
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollArea>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowEmail(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                navigator.clipboard.writeText(emailData.body);
+                toast.success("Email copied to clipboard!");
+              }}
+            >
+              Copy Email
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
