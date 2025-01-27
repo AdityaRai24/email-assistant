@@ -8,22 +8,7 @@ const model = new ChatGoogleGenerativeAI({
   maxOutputTokens: 2048,
 });
 
-export async function POST(req, res) {
-  try {
-    const formData = await req.json();
-
-    if (
-      !formData.recipientName ||
-      !formData.emailPurpose ||
-      !formData.keyPoints
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    const emailPromptTemplate = PromptTemplate.fromTemplate(`
+const emailPrompt = `
         You are a professional email writer. Create a business email using the following information:
         Recipient Name: {recipientName}
         Email Purpose: {emailPurpose}
@@ -61,14 +46,31 @@ export async function POST(req, res) {
 
         if emailPurpose === 'other'
         - Include any additional instructions or context relevant to the email purpose according to the key points provided.
-        `);
+        `;
+
+export async function POST(req, res) {
+  try {
+    const formData = await req.json();
+
+    if (
+      !formData.recipientName ||
+      !formData.emailPurpose ||
+      !formData.keyPoints
+    ) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const emailPromptTemplate = PromptTemplate.fromTemplate(emailPrompt);
 
     const promptValue = await emailPromptTemplate.invoke({
       recipientName: formData.recipientName,
       emailPurpose: formData.emailPurpose,
       keyPoints: formData.keyPoints,
     });
-    
+
     const response = await model.invoke(promptValue);
     const responseText = response.content;
 
@@ -81,17 +83,17 @@ export async function POST(req, res) {
         { status: 500 }
       );
     }
-    
+
     const emailData = {
       subject: subjectMatch[1].trim(),
-      body: bodyMatch[1].trim()
+      body: bodyMatch[1].trim(),
     };
 
     return NextResponse.json(emailData, { status: 200 });
   } catch (error) {
     console.log(error);
     return NextResponse.json(
-      { error: "Internal server error" }, 
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
