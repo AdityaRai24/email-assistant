@@ -103,7 +103,7 @@ const Form = () => {
       setLoading(true);
       setShowEmailSection(true);
       const response = await axios.post(
-        `http://localhost:3000/api/generateEmail`,
+        `https://email-assistant-beta.vercel.app/api/generateEmail`,
         formData
       );
       setEmailData({
